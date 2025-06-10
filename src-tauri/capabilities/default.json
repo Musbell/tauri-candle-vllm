@@ -1,0 +1,31 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Capability for the main window",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:path:default",
+    "opener:default",
+    "shell:default",
+    {
+      "identifier": "shell:allow-spawn",
+      "allow": [
+        {
+          "name": "candle-vllm",
+          "cmd": "candle-vllm-aarch64-apple-darwin",
+          "sidecar": true,
+          "args": [
+            "--port", { "validator": "\\d+" },
+            "--model-id", { "validator": ".+\\.gguf" },
+            "--weight-file", { "validator": ".+\\.gguf" },
+            "qwen3",
+            "--quant", "gguf",
+            "--temperature", { "validator": "[0-9]+(?:\\.[0-9]+)?" },
+            "--penalty", { "validator": "[0-9]+(?:\\.[0-9]+)?" }
+          ]
+        }
+      ]
+    }
+  ]
+}
