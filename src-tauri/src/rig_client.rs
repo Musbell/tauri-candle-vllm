@@ -7,3 +7,4 @@ use rig::providers::openai;
 pub fn rig_local() -> openai::Client {
     openai::Client::from_url("EMPTY", "http://127.0.0.1:1234/v1/")
 }
+    

@@ -1,114 +1,173 @@
-import { createSignal } from "solid-js";
-import logo from "./assets/logo.svg";
+import { createSignal, createEffect, onMount } from "solid-js";
 import { invoke } from "@tauri-apps/api/core";
 import "./App.css";
 
 function App() {
-  const [greetMsg, setGreetMsg] = createSignal("");
-  const [name, setName] = createSignal("");
+  // Chat conversation history
+  const [messages, setMessages] = createSignal([
+    {
+      role: "assistant",
+      content: "Hello! I'm ZarSage, your AI agricultural advisor. How can I help you with your farming and crop production questions today?",
+      timestamp: new Date()
+    }
+  ]);
+  const [inputMessage, setInputMessage] = createSignal("");
+  const [isLoading, setIsLoading] = createSignal(false);
+  const [llmStatus, setLlmStatus] = createSignal("offline");
 
-  // LLM specific state
-  const [llmStatus, setLlmStatus] = createSignal("LLM not started.");
-  const [prompt, setPrompt] = createSignal("");
-  const [llmResponse, setLlmResponse] = createSignal("");
+  // Reference to message container for auto-scrolling
+  let messageContainer;
+  
+  // Scroll to bottom when new messages arrive
+  createEffect(() => {
+    if (messages().length && messageContainer) {
+      setTimeout(() => {
+        messageContainer.scrollTop = messageContainer.scrollHeight;
+      }, 100);
+    }
+  });
 
-  async function greet() {
-    setGreetMsg(await invoke("greet", { name: name() }));
-  }
+  onMount(async () => {
+    // Start LLM automatically when app loads
+    handleStartLlm();
+  });
 
   async function handleStartLlm() {
-    setLlmStatus("Starting LLM, please wait...");
+    setLlmStatus("starting");
     try {
       await invoke("start_llm");
-      setLlmStatus("LLM Ready. You can now ask questions.");
+      setLlmStatus("online");
     } catch (error) {
       console.error("Failed to start LLM:", error);
-      setLlmStatus(`Error starting LLM: ${error}`);
+      setLlmStatus("error");
+      
+      setMessages(prev => [...prev, {
+        role: "system",
+        content: "Error starting the AI assistant. Please try again later.",
+        timestamp: new Date(),
+        error: true
+      }]);
     }
   }
 
-  async function handleAskQwen() {
-    if (!prompt()) {
-      setLlmResponse("Please enter a prompt.");
-      return;
-    }
-    setLlmResponse("Thinking...");
+  async function handleSendMessage(e) {
+    e.preventDefault();
+    
+    if (!inputMessage().trim()) return;
+    
+    const userMessage = inputMessage();
+    
+    // Add user message to chat
+    setMessages(prev => [...prev, {
+      role: "user",
+      content: userMessage,
+      timestamp: new Date()
+    }]);
+    
+    // Clear input
+    setInputMessage("");
+    
+    // Show loading indicator
+    setIsLoading(true);
+    
     try {
-      const response = await invoke("ask_qwen", { prompt: prompt() });
-      setLlmResponse(response);
+      // Call backend
+      const response = await invoke("ask_qwen", { prompt: userMessage });
+      
+      // Add AI response to chat
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        content: response,
+        timestamp: new Date()
+      }]);
     } catch (error) {
-      console.error("Failed to ask Qwen:", error);
-      setLlmResponse(`Error asking Qwen: ${error}`);
+      console.error("Failed to get response:", error);
+      
+      // Add error message
+      setMessages(prev => [...prev, {
+        role: "system",
+        content: `Error: ${error}`,
+        timestamp: new Date(),
+        error: true
+      }]);
+    } finally {
+      setIsLoading(false);
     }
+  }
+
+  // Format timestamp to readable time
+  function formatTime(date) {
+    return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
 
   return (
-    <main class="container">
-      <h1>Welcome to Tauri + Solid + LLM</h1>
-
-      <div class="row">
-        <a href="https://vitejs.dev" target="_blank">
-          <img src="/vite.svg" class="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" class="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://solidjs.com" target="_blank">
-          <img src={logo} class="logo solid" alt="Solid logo" />
-        </a>
-      </div>
-      <p>Click on the Tauri, Vite, and Solid logos to learn more.</p>
-
-      {/* LLM Control Section */}
-      <section class="llm-controls">
-        <h2>LLM Interaction</h2>
-        <div class="row">
-          <button type="button" onClick={handleStartLlm}>
-            Start LLM
-          </button>
+    <div class="chat-container">
+      {/* Header */}
+      <header class="chat-header">
+        <div class="status-indicator">
+          <div class={`status-dot ${llmStatus()}`}></div>
+          <span>
+            {llmStatus() === "offline" && "Offline"}
+            {llmStatus() === "starting" && "Starting..."}
+            {llmStatus() === "online" && "Online"}
+            {llmStatus() === "error" && "Error"}
+          </span>
         </div>
-        <p>{llmStatus()}</p>
+        <h1>ZarSage - Agricultural Advisor</h1>
+        <button class="restart-button" onClick={handleStartLlm} title="Restart AI">
+          ⟳
+        </button>
+      </header>
 
-        <form
-          class="row"
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleAskQwen();
-          }}
-        >
-          <input
-            id="prompt-input"
-            onChange={(e) => setPrompt(e.currentTarget.value)}
-            placeholder="Enter your prompt for Qwen..."
-            value={prompt()}
-          />
-          <button type="submit">Ask Qwen</button>
-        </form>
-        <p><strong>Response:</strong></p>
-        <pre class="llm-response">{llmResponse()}</pre>
-      </section>
+      {/* Message Container */}
+      <div class="messages-container" ref={messageContainer}>
+        {messages().map((message) => (
+          <div class={`message ${message.role} ${message.error ? 'error' : ''}`}>
+            {message.role === "assistant" && (
+              <div class="avatar">🤖</div>
+            )}
+            <div class="message-content">
+              <div class="message-text">{message.content}</div>
+              <div class="message-time">{formatTime(message.timestamp)}</div>
+            </div>
+            {message.role === "user" && (
+              <div class="avatar user">👤</div>
+            )}
+          </div>
+        ))}
+        
+        {/* Loading indicator */}
+        {isLoading() && (
+          <div class="message assistant">
+            <div class="avatar">🤖</div>
+            <div class="message-content">
+              <div class="typing-indicator">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
-      {/* Original Greet Section (optional, can be kept or removed) */}
-      <section class="greet-section">
-        <h2>Greeting Example</h2>
-        <form
-          class="row"
-          onSubmit={(e) => {
-            e.preventDefault();
-            greet();
-          }}
+      {/* Input Area */}
+      <form class="input-area" onSubmit={handleSendMessage}>
+        <input
+          type="text"
+          value={inputMessage()}
+          onInput={(e) => setInputMessage(e.target.value)}
+          placeholder="Type a message..."
+          disabled={isLoading() || llmStatus() !== "online"}
+        />
+        <button 
+          type="submit" 
+          disabled={isLoading() || !inputMessage().trim() || llmStatus() !== "online"}
         >
-          <input
-            id="greet-input"
-            onChange={(e) => setName(e.currentTarget.value)}
-            placeholder="Enter a name..."
-            value={name()}
-          />
-          <button type="submit">Greet</button>
-        </form>
-        <p>{greetMsg()}</p>
-      </section>
-    </main>
+          {isLoading() ? "..." : "Send"}
+        </button>
+      </form>
+    </div>
   );
 }
 
