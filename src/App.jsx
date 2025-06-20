@@ -17,7 +17,7 @@ function App() {
 
   // Reference to message container for auto-scrolling
   let messageContainer;
-  
+
   // Scroll to bottom when new messages arrive
   createEffect(() => {
     if (messages().length && messageContainer) {
@@ -40,7 +40,7 @@ function App() {
     } catch (error) {
       console.error("Failed to start LLM:", error);
       setLlmStatus("error");
-      
+
       setMessages(prev => [...prev, {
         role: "system",
         content: "Error starting the AI assistant. Please try again later.",
@@ -52,28 +52,28 @@ function App() {
 
   async function handleSendMessage(e) {
     e.preventDefault();
-    
+
     if (!inputMessage().trim()) return;
-    
+
     const userMessage = inputMessage();
-    
+
     // Add user message to chat
     setMessages(prev => [...prev, {
       role: "user",
       content: userMessage,
       timestamp: new Date()
     }]);
-    
+
     // Clear input
     setInputMessage("");
-    
+
     // Show loading indicator
     setIsLoading(true);
-    
+
     try {
       // Call backend
       const response = await invoke("ask_qwen", { prompt: userMessage });
-      
+
       // Add AI response to chat
       setMessages(prev => [...prev, {
         role: "assistant",
@@ -82,7 +82,7 @@ function App() {
       }]);
     } catch (error) {
       console.error("Failed to get response:", error);
-      
+
       // Add error message
       setMessages(prev => [...prev, {
         role: "system",
@@ -135,7 +135,7 @@ function App() {
             )}
           </div>
         ))}
-        
+
         {/* Loading indicator */}
         {isLoading() && (
           <div class="message assistant">

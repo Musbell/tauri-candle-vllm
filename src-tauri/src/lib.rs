@@ -4,22 +4,18 @@
 )]
 
 // ───────────────────────── Imports ─────────────────────────
-use tauri::{AppHandle, Emitter, Manager, State, Window};
-use tauri_plugin_shell::{
-    process::{CommandChild, CommandEvent},
-    ShellExt,
-};
+use tauri_plugin_http::reqwest::Client;
+use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::net::TcpStream;
 use std::process::Command;
 use std::sync::{Arc, Mutex};
-use serde_json::{json, Value};
-use futures_util::StreamExt;    // SSE streaming
-use reqwest::Client;            // HTTP client
-
-mod rig_client; // keep if still used elsewhere
-
-// ───────────────────────── Constants ─────────────────────────
+use tauri::{AppHandle, Emitter, Manager, State, Window};
+use tauri_plugin_shell::{
+    process::{CommandChild, CommandEvent},
+    ShellExt,
+}; // HTTP client
+   // ───────────────────────── Constants ─────────────────────────
 const SIDECAR_NAME: &str = "candle-vllm";
 const DEFAULT_PORT: u16 = 1234;
 const MAX_HISTORY_MSGS: usize = 100;
@@ -240,106 +236,17 @@ async fn ask_qwen(
     Ok(content)
 }
 
-/// Stream tokens back incrementally if the server supports SSE
-#[tauri::command]
-async fn ask_qwen_stream(
-    prompt: String,
-    window: Window,
-    state: State<'_, LlmServerState>,
-) -> Result<(), String> {
-    let label = window.label().to_string();
-    let port  = *state.port.lock().unwrap();
-
-    // build / extend history
-    let payload_messages = {
-        let mut histories = state.histories.lock().unwrap();
-        let history = get_history(&mut histories, &label);
-        if history.is_empty() {
-            history.push(json!({ "role": "system", "content": PREAMBLE }));
-        }
-        history.push(json!({ "role": "user", "content": &prompt }));
-        trim_history(history);
-        history.clone()
-    };
-
-    // start request
-    let client = Client::new();
-    let mut res = client
-        .post(format!("http://127.0.0.1:{port}/v1/chat/completions"))
-        .json(&json!({ "model": "qwen3", "messages": payload_messages, "stream": true }))
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
-
-    if !res.status().is_success() {
-        return Err(format!("Streaming error {}", res.status()));
-    }
-
-    // consume SSE directly; emit to this window
-    let mut assistant_reply = String::new();
-    let mut stream = res.bytes_stream();
-    while let Some(chunk) = stream.next().await {
-        if let Ok(bytes) = chunk {
-            if bytes.starts_with(b"data:") {
-                let line = String::from_utf8_lossy(&bytes[5..]).trim().to_string();
-                if line == "[DONE]" {
-                    break;
-                }
-                if let Ok(val) = serde_json::from_str::<Value>(&line) {
-                    if let Some(tok) = val["choices"][0]["delta"]["content"].as_str() {
-                        assistant_reply.push_str(tok);
-                        window.emit("llm-stream", tok.to_owned()).ok();
-                    }
-                }
-            }
-        }
-    }
-
-    // persist final assistant reply
-    {
-        let mut histories = state.histories.lock().unwrap();
-        let history = get_history(&mut histories, &label);
-        history.push(json!({ "role": "assistant", "content": assistant_reply }));
-        trim_history(history);
-    }
-
-    Ok(())
-}
-
-/// Reset chat for current window
-#[tauri::command]
-fn clear_history(window: Window, state: State<'_, LlmServerState>) {
-    state.histories.lock().unwrap().remove(window.label());
-}
-
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {name}! You've been greeted from Rust!")
-}
-
-#[tauri::command]
-async fn terminate_sidecar(state: State<'_, LlmServerState>) -> Result<(), String> {
-    if let Some(child) = state.child.lock().unwrap().take() {
-        child.kill().map_err(|e| e.to_string())?;
-    }
-    *state.start_attempted.lock().unwrap() = false;
-    Ok(())
-}
-
 // ───────────────────────── App Entrypoint ─────────────────────────
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_http::init())
         .manage(LlmServerState::new())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             start_llm,
-            greet,
-            ask_qwen,
-            ask_qwen_stream,
-            clear_history,
-            terminate_sidecar
+            ask_qwen
         ])
         .on_window_event(|window, event| {
             if matches!(event, tauri::WindowEvent::Destroyed) {
