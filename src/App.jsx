@@ -7,10 +7,11 @@ function App() {
   const [messages, setMessages] = createSignal([
     {
       role: "assistant",
-      content: "Hello! I'm ZarSage, your AI agricultural advisor. How can I help you with your farming and crop production questions today?",
+      content: "Hello! I'm Message Mate, your professional and efficient AI writing assistant. How can I help you craft your message today? Please provide some details about your request.",
       timestamp: new Date()
     }
   ]);
+
   const [inputMessage, setInputMessage] = createSignal("");
   const [isLoading, setIsLoading] = createSignal(false);
   const [llmStatus, setLlmStatus] = createSignal("offline");
@@ -113,7 +114,7 @@ function App() {
             {llmStatus() === "error" && "Error"}
           </span>
         </div>
-        <h1>ZarSage - Agricultural Advisor</h1>
+        <h1>Message Mate - Professional AI Writing Assistant</h1>
         <button class="restart-button" onClick={handleStartLlm} title="Restart AI">
           ⟳
         </button>
