@@ -1,13 +1,12 @@
-# ZarSage - AI Agricultural Advisor
+# Message Mate - Professional AI Writing Assistant
 
-ZarSage is a desktop application that provides AI-powered agricultural advice to farmers worldwide. Built with Tauri and Solid.js, it runs a local LLM (Large Language Model) to deliver personalized farming guidance without requiring an internet connection.
+Message Mate is a desktop application designed to help users craft clear, precise, and effective communications. Built with Tauri and Solid.js, it runs a local LLM (Large Language Model) to deliver professional writing guidance without requiring an internet connection.
 
 ## Features
 
-- **Offline AI Assistance**: Runs a local LLM (Qwen3-4B) for agricultural advice without internet dependency
-- **Specialized Agricultural Knowledge**: Provides guidance on crop selection, growth optimization, pest management, sustainable farming, soil health, weather adaptation, and market strategies
-- **User-Friendly Interface**: Simple chat interface accessible to farmers of all technical backgrounds
-- **Cross-Platform**: Works on Windows, macOS, and Linux
+- **Offline AI Assistance**: Runs a local LLM (Qwen3-4B) to provide efficient writing support without internet dependency
+- **Professional Writing Guidance**: Offers assistance with emails, reports, business correspondence, formal letters, announcements, and social media posts
+- **User-Friendly Interface**: Intuitive chat interface suitable for users of all technical backgrounds
 - **Low Resource Usage**: Optimized for performance on modest hardware
 
 ## Installation
@@ -22,7 +21,7 @@ ZarSage is a desktop application that provides AI-powered agricultural advice to
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/tauri-candle-vllm.git
+   git https://github.com/Musbell/tauri-candle-vllm
    cd tauri-candle-vllm
    ```
 
@@ -40,10 +39,10 @@ ZarSage is a desktop application that provides AI-powered agricultural advice to
 
 ## Usage
 
-1. Launch the ZarSage application.
+1. Launch the Message Mate application.
 2. Wait for the LLM to initialize (indicated by the status dot turning green).
-3. Type your agricultural question in the input field and press "Send".
-4. Receive personalized advice tailored to your farming needs.
+3. Type your writing request in the input field and press "Send".
+4. Receive personalized guidance tailored to your specific communication needs.
 
 ## Development
 
@@ -69,8 +68,8 @@ ZarSage is a desktop application that provides AI-powered agricultural advice to
 
 - `src/` - Frontend Solid.js code
 - `src-tauri/` - Rust backend code
-  - `src/lib.rs` - Main Rust code for the Tauri application
-  - `bin/candle-vllm` - Sidecar executable for running the LLM
+    - `src/lib.rs` - Main Rust code for the Tauri application
+    - `bin/candle-vllm` - Sidecar executable for running the LLM
 
 ### LLM Configuration
 
@@ -88,7 +87,7 @@ The application uses the Qwen3-4B model with GGUF quantization. The model config
 - **Framework**: Tauri 2.0
 - **Language**: Rust
 - **LLM Runtime**: Candle (a Rust-native ML framework)
-- **Model**: Qwen3-4B (4 billion parameter LLM optimized for agricultural knowledge)
+- **Model**: Qwen3-4B (4 billion parameter LLM optimized for professional communication)
 
 ## Contributing
 
